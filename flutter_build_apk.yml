@@ -1,0 +1,61 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'Job ID'
+        required: true
+        type: string
+      zip_path:
+        description: 'Zip file path'
+        required: false
+        type: string
+      zip_url:
+        description: 'Zip file URL'
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.24.0'
+
+      - name: Download zip file from repo
+        if: github.event.inputs.zip_path != ''
+        run: |
+          curl -L -o project.zip "https://raw.githubusercontent.com/massadepan77r-ops/niar/main/${{ github.event.inputs.zip_path }}"
+          unzip -o project.zip -d .
+
+      - name: Download zip from URL
+        if: github.event.inputs.zip_url != ''
+        run: |
+          curl -L -o project.zip "${{ github.event.inputs.zip_url }}"
+          unzip -o project.zip -d .
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ github.event.inputs.job_id }}
+          path: build/app/outputs/flutter-apk/app-release.apk
